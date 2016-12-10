@@ -301,7 +301,7 @@ void draw_picture(const int x, const int y, const char *filename)
   }
 }
 
-void animation_line(Node *begin, const int x0, const int y0, const int x1, const int y1)
+void animation_line(Node *begin, const int x0, const int y0, const int x1, const int y1, const char *filename)
 {
   int i;
   const int n = max(abs(x1 - x0), abs(y1 - y0));
@@ -319,12 +319,12 @@ void animation_line(Node *begin, const int x0, const int y0, const int x1, const
     save_history(filename_ani, begin);
 
     fp = fopen(filename_ani, "a");
-    fprintf(fp,"pic %d %d\n", x, y);
+    fprintf(fp,"pic %d %d %s\n", x, y, filename);
     fclose(fp);
   }
 }
 
-void animation_circle(Node *begin, const int x0, const int y0, const int r)
+void animation_circle(Node *begin, const int x0, const int y0, const int r, const char *filename)
 {
   const int n = trunc(2 * 3.14 * r);
   int i;
@@ -342,7 +342,7 @@ void animation_circle(Node *begin, const int x0, const int y0, const int r)
     save_history(filename_ani, begin);
 
     fp = fopen(filename_ani, "a");
-    fprintf(fp,"pic %d %d\n", x, y);
+    fprintf(fp,"pic %d %d %s\n", x, y, filename);
     fclose(fp);
   }
 }
@@ -418,7 +418,8 @@ int interpret_command(const char *command, int *hsize, Node **begin_p, FILE *fp)
     y0 = atoi(strtok(NULL, " "));
     x1 = atoi(strtok(NULL, " "));
     y1 = atoi(strtok(NULL, " "));
-    animation_line(*begin_p, x0, y0, x1, y1);
+    s = strtok(NULL, " ");
+    animation_line(*begin_p, x0, y0, x1, y1, s);
     return 1;
   }
 
@@ -427,7 +428,8 @@ int interpret_command(const char *command, int *hsize, Node **begin_p, FILE *fp)
     x0 = atoi(strtok(NULL, " "));
     y0 = atoi(strtok(NULL, " "));
     r = atoi(strtok(NULL, " "));
-    animation_circle(*begin_p, x0, y0, r);
+    s = strtok(NULL, " ");
+    animation_circle(*begin_p, x0, y0, r, s);
     return 1;
   }
 
