@@ -4,6 +4,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include <math.h>
+#include <unistd.h>
 
 #define WIDTH 70
 #define HEIGHT 40
@@ -109,6 +110,8 @@ const char *default_history_file = "history.txt";
 const char *default_picture_file = "pic.txt";
 int numofanimation = 0;
 
+int interpret_command(const char *, int *, Node **, FILE *);
+
 void print_canvas(FILE *fp)
 {
   int x, y;
@@ -204,7 +207,7 @@ Node *load_history(const char *filename, Node *begin, int *hsize)
 
   FILE *fp;
   if((fp = fopen(filename, "r")) == NULL){
-    fprintf(stderr, "error: cannot open %s.\n", filename);
+    fprintf(stderr, "error: cannot open IN HIST %s.\n", filename);
     return begin;
   }
 
@@ -219,10 +222,12 @@ Node *load_history(const char *filename, Node *begin, int *hsize)
 
   printf("loaded from \"%s\"\n", filename);
 
+  fclose(fp);
+
   return begin;
 }
 
-char **load_pic(const char *filename, int *mx, int *my)
+char **load_pic(int *mx, int *my, const char *filename)
 {
   int i, j, x=1, x_max=1, y=1;
   char **s;
@@ -233,7 +238,7 @@ char **load_pic(const char *filename, int *mx, int *my)
 
   FILE *fp;
   if((fp = fopen(filename, "r")) == NULL){
-    fprintf(stderr, "error: cannot open %s.\n", filename);
+    fprintf(stderr, "error: cannot open IN PIC %s.\n", filename);
     return NULL;
   }
 
@@ -268,16 +273,18 @@ char **load_pic(const char *filename, int *mx, int *my)
     }
   }
 
+  fclose(fp);
+
   *mx = x_max;
   *my = y;
   return s;
 }
 
-void draw_picture(const char *filename, const int x, const int y)
+void draw_picture(const int x, const int y, const char *filename)
 {
   int mx,my,i,j;
   char **pic;
-  pic = load_pic(filename, &mx, &my);
+  pic = load_pic(&mx, &my, filename);
 
   for(i = 0; i<my; i++){
     for(j = 0; j<mx; j++){
@@ -308,12 +315,25 @@ void animation_line(Node *begin, const int x0, const int y0, const int x1, const
     
     const int x = x0 + i * (x1 - x0) / n;
     const int y = y0 + i * (y1 - y0) / n;
-    //save historyして追記していくだけ？
+
     save_history(filename_ani, begin);
 
     fp = fopen(filename_ani, "a");
-    fprintf(fp,"pic %d %d", x, y);
+    fprintf(fp,"pic %d %d\n", x, y);
     fclose(fp);
+  }
+}
+
+void animation_play(int *hsize_p, Node **begin_p, FILE *fp)
+{
+  char buf[BUFSIZE];
+  int i;
+  for(i=0; i<numofanimation; i++){
+    sprintf(buf,"load animation/animation%d.txt\n", i);
+    interpret_command(buf, hsize_p, begin_p, NULL);
+    print_canvas(fp);
+    init_canvas();
+    usleep(200 * 1000);
   }
 }
 
@@ -322,7 +342,7 @@ void animation_line(Node *begin, const int x0, const int y0, const int x1, const
 //     0, normal commands such as "line"
 //     1, unknown or special commands (not recorded in history[])
 //     2, quit
-int interpret_command(const char *command, int *hsize, Node **begin_p)
+int interpret_command(const char *command, int *hsize, Node **begin_p, FILE *fp)
 {
   char buf[BUFSIZE];
   strcpy(buf, command);
@@ -364,7 +384,7 @@ int interpret_command(const char *command, int *hsize, Node **begin_p)
     x0 = atoi(strtok(NULL, " "));
     y0 = atoi(strtok(NULL, " "));
     s = strtok(NULL, " ");
-    draw_picture(s, x0, y0);
+    draw_picture(x0, y0, s);
     return 0;
   }
 
@@ -375,6 +395,11 @@ int interpret_command(const char *command, int *hsize, Node **begin_p)
     x1 = atoi(strtok(NULL, " "));
     y1 = atoi(strtok(NULL, " "));
     animation_line(*begin_p, x0, y0, x1, y1);
+    return 1;
+  }
+
+  if(strcmp(s, "animation") == 0) {
+    animation_play(hsize, begin_p, fp);
     return 1;
   }
 
@@ -389,7 +414,7 @@ int interpret_command(const char *command, int *hsize, Node **begin_p)
     *begin_p = load_history(s, *begin_p, hsize);
     Node *p = *begin_p;
     while(p != NULL){
-      interpret_command(p->str, NULL, begin_p);
+      interpret_command(p->str, NULL, begin_p, fp);
       p = p->next;
     }
     return 1;
@@ -408,7 +433,7 @@ int interpret_command(const char *command, int *hsize, Node **begin_p)
     *begin_p = pop_back(*begin_p);
     Node *p = *begin_p;
     while(p != NULL){
-      interpret_command(p->str, NULL, begin_p);
+      interpret_command(p->str, NULL, begin_p, fp);
       p = p->next;
     }
     if(hsize!=NULL){
@@ -447,7 +472,7 @@ int main()
     printf("%d > ", hsize);
     fgets(buf, BUFSIZE, stdin);
 
-    const int r = interpret_command(buf, &hsize, &begin);
+    const int r = interpret_command(buf, &hsize, &begin, fp);
     if (r == 2) break;
     if (r == 0) {
       begin = push_back(begin, buf);
