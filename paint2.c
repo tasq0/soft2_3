@@ -214,6 +214,7 @@ Node *load_history(const char *filename, Node *begin, int *hsize)
     hsize0++;
   }
   *hsize = hsize0;
+  fclose(fp);
 
   printf("loaded from \"%s\"\n", filename);
 

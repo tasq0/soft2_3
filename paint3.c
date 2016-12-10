@@ -163,7 +163,7 @@ void draw_rectangle(const int x0, const int y0, const int width, const int heigh
 //中心の座標と半径の長さを入力すると円を描きます
 void draw_circle(x0, y0, r)
 {
-  int n = trunc(2 * 3.14 * r);
+  const int n = trunc(2 * 3.14 * r);
   int i;
 
   for(i = 0; i <= n; i++){
@@ -207,7 +207,7 @@ Node *load_history(const char *filename, Node *begin, int *hsize)
 
   FILE *fp;
   if((fp = fopen(filename, "r")) == NULL){
-    fprintf(stderr, "error: cannot open IN HIST %s.\n", filename);
+    fprintf(stderr, "error: cannot open %s.\n", filename);
     return begin;
   }
 
@@ -238,7 +238,7 @@ char **load_pic(int *mx, int *my, const char *filename)
 
   FILE *fp;
   if((fp = fopen(filename, "r")) == NULL){
-    fprintf(stderr, "error: cannot open IN PIC %s.\n", filename);
+    fprintf(stderr, "error: cannot open %s.\n", filename);
     return NULL;
   }
 
@@ -324,6 +324,30 @@ void animation_line(Node *begin, const int x0, const int y0, const int x1, const
   }
 }
 
+void animation_circle(Node *begin, const int x0, const int y0, const int r)
+{
+  const int n = trunc(2 * 3.14 * r);
+  int i;
+  
+  for (i = 0; i <= n; i++) {
+    char filename_ani[32];
+    FILE *fp;
+    
+    sprintf(filename_ani,"animation/animation%d.txt",numofanimation);
+    numofanimation++;
+    
+    const int x = trunc(x0 + r * cos(2 * 3.14 * i / n));
+    const int y = trunc(y0 + r * sin(2 * 3.14 * i / n));
+
+    save_history(filename_ani, begin);
+
+    fp = fopen(filename_ani, "a");
+    fprintf(fp,"pic %d %d\n", x, y);
+    fclose(fp);
+  }
+}
+
+
 void animation_play(int *hsize_p, Node **begin_p, FILE *fp)
 {
   char buf[BUFSIZE];
@@ -333,7 +357,7 @@ void animation_play(int *hsize_p, Node **begin_p, FILE *fp)
     interpret_command(buf, hsize_p, begin_p, NULL);
     print_canvas(fp);
     init_canvas();
-    usleep(200 * 1000);
+    usleep(50 * 1000);
   }
 }
 
@@ -398,6 +422,15 @@ int interpret_command(const char *command, int *hsize, Node **begin_p, FILE *fp)
     return 1;
   }
 
+  if(strcmp(s, "anicir") == 0) {
+    int x0, y0, r;
+    x0 = atoi(strtok(NULL, " "));
+    y0 = atoi(strtok(NULL, " "));
+    r = atoi(strtok(NULL, " "));
+    animation_circle(*begin_p, x0, y0, r);
+    return 1;
+  }
+
   if(strcmp(s, "animation") == 0) {
     animation_play(hsize, begin_p, fp);
     return 1;
@@ -451,6 +484,18 @@ int interpret_command(const char *command, int *hsize, Node **begin_p, FILE *fp)
   return 1;
 }
 
+void deleteanimationfile()
+{
+  char filename[32];
+  int i;
+  for(i=0; i<numofanimation; i++){
+    sprintf(filename,"animation/animation%d.txt", i);
+    if(remove(filename) != 0){
+      printf("ファイル削除に失敗しました\n");
+    }
+  }
+}
+
 int main()
 {
   const char *filename = "canvas.txt";
@@ -482,6 +527,8 @@ int main()
   }
 
   fclose(fp);
+
+  deleteanimationfile();
 
   return 0;
 }
