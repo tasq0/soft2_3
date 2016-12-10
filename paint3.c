@@ -223,7 +223,7 @@ Node *load_history(const char *filename, Node *begin, int *hsize)
 
 char **load_pic(const char *filename, int *mx, int *my)
 {
-  int i, j, x=1, x_max=1, y=0;
+  int i, j, x=1, x_max=1, y=1;
   char **s;
   char c;
 
@@ -237,14 +237,14 @@ char **load_pic(const char *filename, int *mx, int *my)
   }
 
   while((c = fgetc(fp)) != EOF){
-    if(c != '\n'){
+    if(c !='\n'){
       x++;
-    }
-    else{
       if(x>x_max){
 	x_max = x;
       }
-      x = 0;
+    }
+    else{
+      x = 1;
       y++;
     }
   }
@@ -260,7 +260,7 @@ char **load_pic(const char *filename, int *mx, int *my)
   for(i=0; i<y; i++){
     for(j=0; j<x_max; j++){
       c = fgetc(fp);
-      if(c == '\n'||c == '\0'){
+      if(c == '\n'||c == EOF){
 	break;
       }
       s[i][j] = c;
