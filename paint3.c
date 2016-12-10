@@ -106,6 +106,7 @@ Node *pop_back(Node *begin)
 ////////////////////////////////////////////
 
 const char *default_history_file = "history.txt";
+const char *default_picture_file = "pic.txt";
 
 void print_canvas(FILE *fp)
 {
@@ -220,6 +221,78 @@ Node *load_history(const char *filename, Node *begin, int *hsize)
   return begin;
 }
 
+char **load_pic(const char *filename, int *mx, int *my)
+{
+  int i, j, x=1, x_max=1, y=0;
+  char **s;
+  char c;
+
+  if(filename == NULL)
+    filename = default_picture_file;
+
+  FILE *fp;
+  if((fp = fopen(filename, "r")) == NULL){
+    fprintf(stderr, "error: cannot open %s.\n", filename);
+    return NULL;
+  }
+
+  while((c = fgetc(fp)) != EOF){
+    if(c != '\n'){
+      x++;
+    }
+    else{
+      if(x>x_max){
+	x_max = x;
+      }
+      x = 0;
+      y++;
+    }
+  }
+
+  s = (char **)malloc(sizeof(char *) * y);
+  for(i=0; i<y; i++){
+    s[i] = (char *)malloc(sizeof(char *) * x_max);
+    memset(s[i], '\0', x_max);
+  }
+  
+  fseek(fp, 0, SEEK_SET);
+
+  for(i=0; i<y; i++){
+    for(j=0; j<x_max; j++){
+      c = fgetc(fp);
+      if(c == '\n'||c == '\0'){
+	break;
+      }
+      s[i][j] = c;
+    }
+  }
+
+  *mx = x_max;
+  *my = y;
+  return s;
+}
+
+void draw_picture(const char *filename, const int x, const int y)
+{
+  int mx,my,i,j;
+  char **pic;
+  pic = load_pic(filename, &mx, &my);
+
+  for(i = 0; i<my; i++){
+    for(j = 0; j<mx; j++){
+      if(pic[i][j] =='\0'){
+	break;
+      }
+      else{
+	if(x+j<WIDTH && x+j>0 && y+i<HEIGHT && y+i>0){
+	  //xとyが逆らしいけど面倒なのでここだけ直す
+	  canvas[x+j][y+i] = pic[i][j];
+	}
+      }
+    }
+  }
+}
+
 // Interpret and execute a command
 //   return value:
 //     0, normal commands such as "line"
@@ -261,6 +334,16 @@ int interpret_command(const char *command, int *hsize, Node **begin_p)
     draw_circle(x0, y0, r);
     return 0;
   }
+
+   if(strcmp(s, "pic") == 0) {
+    int x0, y0;
+    x0 = atoi(strtok(NULL, " "));
+    y0 = atoi(strtok(NULL, " "));
+    s = strtok(NULL, " ");
+    draw_picture(s, x0, y0);
+    return 0;
+  }
+  
 
   if (strcmp(s, "save") == 0) {
     s = strtok(NULL, " ");
