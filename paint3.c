@@ -107,6 +107,7 @@ Node *pop_back(Node *begin)
 
 const char *default_history_file = "history.txt";
 const char *default_picture_file = "pic.txt";
+int numofanimation = 0;
 
 void print_canvas(FILE *fp)
 {
@@ -293,6 +294,29 @@ void draw_picture(const char *filename, const int x, const int y)
   }
 }
 
+void animation_line(Node *begin, const int x0, const int y0, const int x1, const int y1)
+{
+  int i;
+  const int n = max(abs(x1 - x0), abs(y1 - y0));
+  
+  for (i = 0; i <= n; i++) {
+    char filename_ani[32];
+    FILE *fp;
+    
+    sprintf(filename_ani,"animation/animation%d.txt",numofanimation);
+    numofanimation++;
+    
+    const int x = x0 + i * (x1 - x0) / n;
+    const int y = y0 + i * (y1 - y0) / n;
+    //save historyして追記していくだけ？
+    save_history(filename_ani, begin);
+
+    fp = fopen(filename_ani, "a");
+    fprintf(fp,"pic %d %d", x, y);
+    fclose(fp);
+  }
+}
+
 // Interpret and execute a command
 //   return value:
 //     0, normal commands such as "line"
@@ -335,7 +359,7 @@ int interpret_command(const char *command, int *hsize, Node **begin_p)
     return 0;
   }
 
-   if(strcmp(s, "pic") == 0) {
+  if(strcmp(s, "pic") == 0) {
     int x0, y0;
     x0 = atoi(strtok(NULL, " "));
     y0 = atoi(strtok(NULL, " "));
@@ -343,7 +367,16 @@ int interpret_command(const char *command, int *hsize, Node **begin_p)
     draw_picture(s, x0, y0);
     return 0;
   }
-  
+
+  if(strcmp(s, "aniline") == 0) {
+    int x0, y0, x1, y1;
+    x0 = atoi(strtok(NULL, " "));
+    y0 = atoi(strtok(NULL, " "));
+    x1 = atoi(strtok(NULL, " "));
+    y1 = atoi(strtok(NULL, " "));
+    animation_line(*begin_p, x0, y0, x1, y1);
+    return 1;
+  }
 
   if (strcmp(s, "save") == 0) {
     s = strtok(NULL, " ");
@@ -358,15 +391,17 @@ int interpret_command(const char *command, int *hsize, Node **begin_p)
     while(p != NULL){
       interpret_command(p->str, NULL, begin_p);
       p = p->next;
-  }
+    }
     return 1;
   }
   
   if (strcmp(s, "undo") == 0) {
-
-    if(*hsize <= 0){
-      printf("error: too many undo.\n");
-      return 1;
+    //アニメ用に再利用したいのでnull想定
+    if(hsize != NULL){
+      if(*hsize <= 0){
+	printf("error: too many undo.\n");
+	return 1;
+      }
     }
     
     init_canvas();
@@ -376,7 +411,9 @@ int interpret_command(const char *command, int *hsize, Node **begin_p)
       interpret_command(p->str, NULL, begin_p);
       p = p->next;
     }
-    (*hsize)--;
+    if(hsize!=NULL){
+      (*hsize)--;
+    }
     return 1;
   }
 
