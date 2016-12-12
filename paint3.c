@@ -472,6 +472,62 @@ void plus_animation_circle(Node *begin, const int x0, const int y0, const int r,
   }
 }
 
+void plus_animation_sin(Node *begin, const int x0, const int y0, const int A, const int dist, const int step0, const char *filename)
+{
+  int y;
+  int step = step0;
+  if(dist > 0){
+    for(y = y0; y<=y0+dist; y++){
+      char filename_ani[32];
+      FILE *fp;
+    
+      if(step >= numofanimation){
+	numofmovingthingswhenanimationfinished ++;
+	break;
+      }
+    
+      sprintf(filename_ani,"animation/animation%d.txt", step);
+      step++;
+      
+      const int x = trunc(x0 + A * sin(y-y0));
+
+      fp = fopen(filename_ani, "a");
+      if(filename == NULL){
+	fprintf(fp,"pic %d %d\n", x, y);
+      }
+      else{
+	fprintf(fp,"pic %d %d %s\n", x, y, filename);
+      }
+      fclose(fp);
+    }
+  }
+  if(dist < 0){
+    for(y = y0; y>=y0+dist; y--){
+      char filename_ani[32];
+      FILE *fp;
+    
+      if(step >= numofanimation){
+	numofmovingthingswhenanimationfinished ++;
+	break;
+      }
+    
+      sprintf(filename_ani,"animation/animation%d.txt", step);
+      step++;
+      
+      const int x = trunc(x0 + A * sin(y-y0));
+
+      fp = fopen(filename_ani, "a");
+      if(filename == NULL){
+	fprintf(fp,"pic %d %d\n", x, y);
+      }
+      else{
+	fprintf(fp,"pic %d %d %s\n", x, y, filename);
+      }
+      fclose(fp);
+    }
+  }
+}
+
 
 void animation_play(int *hsize_p, Node **begin_p, FILE *fp)
 {
@@ -484,7 +540,6 @@ void animation_play(int *hsize_p, Node **begin_p, FILE *fp)
     init_canvas();
     usleep(50 * 1000);
   }
-  printf("%d\n",numofmovingthingswhenanimationfinished);
   for (i=0; i<numofmovingthingswhenanimationfinished; i++){
     interpret_command("undo\n", hsize_p, begin_p, NULL);
   }
@@ -585,14 +640,26 @@ int interpret_command(const char *command, int *hsize, Node **begin_p, FILE *fp)
     return 4;
   }
 
-    if(strcmp(s, "anicirp") == 0) {
-      int x0, y0, r, step0;
+  if(strcmp(s, "anicirp") == 0) {
+    int x0, y0, r, step0;
     x0 = atoi(strtok(NULL, " "));
     y0 = atoi(strtok(NULL, " "));
     r = atoi(strtok(NULL, " "));
     step0 = atoi(strtok(NULL, " "));
     s = strtok(NULL, " ");
     plus_animation_circle(*begin_p, x0, y0, r, step0, s);
+    return 4;
+  }
+    
+  if(strcmp(s, "anisinp") == 0) {
+    int x0, y0, A, dist, step0;
+    x0 = atoi(strtok(NULL, " "));
+    y0 = atoi(strtok(NULL, " "));
+    A = atoi(strtok(NULL, " "));
+    dist = atoi(strtok(NULL, " "));
+    step0 = atoi(strtok(NULL, " "));
+    s = strtok(NULL, " ");
+    plus_animation_sin(*begin_p, x0, y0, A, dist, step0, s);
     return 4;
   }
 
