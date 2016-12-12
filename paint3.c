@@ -111,6 +111,7 @@ const char *default_picture_file = "pic.txt";
 int numofanimation = 0;
 
 int interpret_command(const char *, int *, Node **, FILE *);
+int deleteanimationfile();
 
 void print_canvas(FILE *fp)
 {
@@ -319,7 +320,12 @@ void animation_line(Node *begin, const int x0, const int y0, const int x1, const
     save_history(filename_ani, begin);
 
     fp = fopen(filename_ani, "a");
-    fprintf(fp,"pic %d %d %s\n", x, y, filename);
+    if(filename == NULL){
+      fprintf(fp,"pic %d %d\n", x, y);
+    }
+    else{
+      fprintf(fp,"pic %d %d %s\n", x, y, filename);
+    }
     fclose(fp);
   }
 }
@@ -342,7 +348,12 @@ void animation_circle(Node *begin, const int x0, const int y0, const int r, cons
     save_history(filename_ani, begin);
 
     fp = fopen(filename_ani, "a");
-    fprintf(fp,"pic %d %d %s\n", x, y, filename);
+    if(filename == NULL){
+      fprintf(fp,"pic %d %d\n", x, y);
+    }
+    else{
+      fprintf(fp,"pic %d %d %s\n", x, y, filename);
+    }
     fclose(fp);
   }
 }
@@ -357,6 +368,7 @@ void animation_play(int *hsize_p, Node **begin_p, FILE *fp)
     interpret_command(buf, hsize_p, begin_p, NULL);
     print_canvas(fp);
     init_canvas();
+    interpret_command("undo\n", hsize_p, begin_p, NULL);
     usleep(50 * 1000);
   }
 }
@@ -420,7 +432,7 @@ int interpret_command(const char *command, int *hsize, Node **begin_p, FILE *fp)
     y1 = atoi(strtok(NULL, " "));
     s = strtok(NULL, " ");
     animation_line(*begin_p, x0, y0, x1, y1, s);
-    return 1;
+    return 3;
   }
 
   if(strcmp(s, "anicir") == 0) {
@@ -430,11 +442,38 @@ int interpret_command(const char *command, int *hsize, Node **begin_p, FILE *fp)
     r = atoi(strtok(NULL, " "));
     s = strtok(NULL, " ");
     animation_circle(*begin_p, x0, y0, r, s);
-    return 1;
+    return 3;
   }
 
   if(strcmp(s, "animation") == 0) {
     animation_play(hsize, begin_p, fp);
+    return 1;
+  }
+
+  if(strcmp(s, "deleteanimation") == 0) {
+    char c;
+    printf("すべてのアニメーションを削除しますが、よろしいですか？ y/n\n");
+    while(1){
+      if((c = getchar()) == 'y'){
+	getchar();
+	if(deleteanimationfile() == 0){
+	  printf("アニメーションの削除が完了しました\n");
+	}
+	else{
+	  printf("アニメーションの削除に失敗しました\n");
+	}
+	numofanimation = 0;
+	return 1;
+      }
+      if(c == 'n'){
+	getchar();
+	return 1;
+      }
+    }
+  }
+
+  if(strcmp(s, "aniinfo") == 0) {
+    printf("現在のアニメーション枚数: %d\n",numofanimation);
     return 1;
   }
 
@@ -486,7 +525,29 @@ int interpret_command(const char *command, int *hsize, Node **begin_p, FILE *fp)
   return 1;
 }
 
-void deleteanimationfile()
+
+int load_number_of_animations()
+{
+  FILE *fp;
+  char s[50];
+  if((fp = fopen("animation/information.txt","r")) == NULL){
+    return 0;
+  }
+  fgets(s, 50, fp);
+  numofanimation = atoi(s);
+  fclose(fp);
+  return numofanimation;
+}
+
+void save_number_of_animations()
+{
+  FILE *fp;
+  fp = fopen("animation/information.txt","w");
+  fprintf(fp,"%d",numofanimation);
+  fclose(fp);
+}
+
+int deleteanimationfile()
 {
   char filename[32];
   int i;
@@ -494,8 +555,14 @@ void deleteanimationfile()
     sprintf(filename,"animation/animation%d.txt", i);
     if(remove(filename) != 0){
       printf("ファイル削除に失敗しました\n");
+      return 1;
     }
   }
+  if(remove("animation/information.txt") != 0){
+    printf("ファイル削除に失敗しました\n");
+    return 1;
+  }
+  return 0;
 }
 
 int main()
@@ -514,6 +581,7 @@ int main()
   
   int hsize = 0;
   Node *begin = NULL;
+  numofanimation = load_number_of_animations();
   
   while(1){
     printf("%d > ", hsize);
@@ -521,6 +589,9 @@ int main()
 
     const int r = interpret_command(buf, &hsize, &begin, fp);
     if (r == 2) break;
+    if (r == 3) {
+      save_number_of_animations();
+    }
     if (r == 0) {
       begin = push_back(begin, buf);
       hsize++;
@@ -529,8 +600,6 @@ int main()
   }
 
   fclose(fp);
-
-  deleteanimationfile();
 
   return 0;
 }
