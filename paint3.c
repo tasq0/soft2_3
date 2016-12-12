@@ -109,6 +109,7 @@ Node *pop_back(Node *begin)
 const char *default_history_file = "history.txt";
 const char *default_picture_file = "pic.txt";
 int numofanimation = 0;
+int numofmovingthingswhenanimationfinished = 1;
 
 int interpret_command(const char *, int *, Node **, FILE *);
 int deleteanimationfile();
@@ -358,6 +359,119 @@ void animation_circle(Node *begin, const int x0, const int y0, const int r, cons
   }
 }
 
+void animation_sin(Node *begin, const int x0, const int y0, const int A, const int dist, const char *filename)
+{
+  int y;
+  if(dist > 0){
+    for(y = y0; y<=y0+dist; y++){
+      char filename_ani[32];
+      FILE *fp;
+    
+      sprintf(filename_ani,"animation/animation%d.txt",numofanimation);
+      numofanimation++;
+    
+      const int x = trunc(x0 + A * sin(y-y0));
+
+      save_history(filename_ani, begin);
+
+      fp = fopen(filename_ani, "a");
+      if(filename == NULL){
+	fprintf(fp,"pic %d %d\n", x, y);
+      }
+      else{
+	fprintf(fp,"pic %d %d %s\n", x, y, filename);
+      }
+      fclose(fp);
+    }
+  }
+  if(dist < 0){
+    for(y = y0; y>=y0+dist; y--){
+      char filename_ani[32];
+      FILE *fp;
+    
+      sprintf(filename_ani,"animation/animation%d.txt",numofanimation);
+      numofanimation++;
+    
+      const int x = trunc(x0 + A * sin(y-y0));
+
+      save_history(filename_ani, begin);
+
+      fp = fopen(filename_ani, "a");
+      if(filename == NULL){
+	fprintf(fp,"pic %d %d\n", x, y);
+      }
+      else{
+	fprintf(fp,"pic %d %d %s\n", x, y, filename);
+      }
+      fclose(fp);
+    }
+  }
+}
+
+void plus_animation_line(Node *begin, const int x0, const int y0, const int x1, const int y1, const int step0, const char *filename)
+{
+  int i;
+  int step = step0;
+  const int n = max(abs(x1 - x0), abs(y1 - y0));
+  
+  for(i =0;i<=n;i++){
+    char filename_ani[32];
+    FILE *fp;
+    
+    if(step >= numofanimation){
+      numofmovingthingswhenanimationfinished ++;
+      break;
+    }
+    
+    sprintf(filename_ani,"animation/animation%d.txt", step);
+    step++;
+    
+    const int x = x0 + i * (x1 - x0) / n;
+    const int y = y0 + i * (y1 - y0) / n;
+
+    fp = fopen(filename_ani, "a");
+    if(filename == NULL){
+      fprintf(fp,"pic %d %d\n", x, y);
+    }
+    else{
+      fprintf(fp,"pic %d %d %s\n", x, y, filename);
+    }
+    fclose(fp);
+  }
+}
+
+void plus_animation_circle(Node *begin, const int x0, const int y0, const int r, const int step0, const char *filename)
+{
+  int i;
+  int step = step0;
+  const int n = trunc(2 * 3.14 * r);
+  
+  for(i =0;i<=n;i++){
+    char filename_ani[32];
+    FILE *fp;
+    
+    if(step >= numofanimation){
+      numofmovingthingswhenanimationfinished ++;
+      break;
+    }
+    
+    sprintf(filename_ani,"animation/animation%d.txt", step);
+    step++;
+    
+    const int x = trunc(x0 + r * cos(2 * 3.14 * i / n));
+    const int y = trunc(y0 + r * sin(2 * 3.14 * i / n));
+
+    fp = fopen(filename_ani, "a");
+    if(filename == NULL){
+      fprintf(fp,"pic %d %d\n", x, y);
+    }
+    else{
+      fprintf(fp,"pic %d %d %s\n", x, y, filename);
+    }
+    fclose(fp);
+  }
+}
+
 
 void animation_play(int *hsize_p, Node **begin_p, FILE *fp)
 {
@@ -368,8 +482,11 @@ void animation_play(int *hsize_p, Node **begin_p, FILE *fp)
     interpret_command(buf, hsize_p, begin_p, NULL);
     print_canvas(fp);
     init_canvas();
-    interpret_command("undo\n", hsize_p, begin_p, NULL);
     usleep(50 * 1000);
+  }
+  printf("%d\n",numofmovingthingswhenanimationfinished);
+  for (i=0; i<numofmovingthingswhenanimationfinished; i++){
+    interpret_command("undo\n", hsize_p, begin_p, NULL);
   }
 }
 
@@ -445,6 +562,40 @@ int interpret_command(const char *command, int *hsize, Node **begin_p, FILE *fp)
     return 3;
   }
 
+  if(strcmp(s, "anisin") == 0) {
+    int x0, y0, A, dist;
+    x0 = atoi(strtok(NULL, " "));
+    y0 = atoi(strtok(NULL, " "));
+    A = atoi(strtok(NULL, " "));
+    dist = atoi(strtok(NULL, " "));
+    s = strtok(NULL, " ");
+    animation_sin(*begin_p, x0, y0, A, dist, s);
+    return 3;
+  }
+
+  if(strcmp(s, "anilinep") == 0){
+    int x0, y0, x1, y1, step0;
+    x0 = atoi(strtok(NULL, " "));
+    y0 = atoi(strtok(NULL, " "));
+    x1 = atoi(strtok(NULL, " "));
+    y1 = atoi(strtok(NULL, " "));
+    step0 = atoi(strtok(NULL, " "));
+    s = strtok(NULL, " ");
+    plus_animation_line(*begin_p, x0, y0, x1, y1, step0, s);
+    return 4;
+  }
+
+    if(strcmp(s, "anicirp") == 0) {
+      int x0, y0, r, step0;
+    x0 = atoi(strtok(NULL, " "));
+    y0 = atoi(strtok(NULL, " "));
+    r = atoi(strtok(NULL, " "));
+    step0 = atoi(strtok(NULL, " "));
+    s = strtok(NULL, " ");
+    plus_animation_circle(*begin_p, x0, y0, r, step0, s);
+    return 4;
+  }
+
   if(strcmp(s, "animation") == 0) {
     animation_play(hsize, begin_p, fp);
     return 1;
@@ -463,6 +614,7 @@ int interpret_command(const char *command, int *hsize, Node **begin_p, FILE *fp)
 	  printf("アニメーションの削除に失敗しました\n");
 	}
 	numofanimation = 0;
+	numofmovingthingswhenanimationfinished = 1;
 	return 1;
       }
       if(c == 'n'){
@@ -526,24 +678,35 @@ int interpret_command(const char *command, int *hsize, Node **begin_p, FILE *fp)
 }
 
 
-int load_number_of_animations()
+void load_information()
 {
   FILE *fp;
-  char s[50];
+  char s1[50],s2[50];
   if((fp = fopen("animation/information.txt","r")) == NULL){
-    return 0;
+    numofanimation = 0;
+    numofmovingthingswhenanimationfinished = 1;
+    return;
   }
-  fgets(s, 50, fp);
-  numofanimation = atoi(s);
+  fgets(s1, 50, fp);
+  numofanimation = atoi(s1);
+  fgets(s2, 50, fp);
+  numofmovingthingswhenanimationfinished = atoi(s2);
   fclose(fp);
-  return numofanimation;
 }
 
 void save_number_of_animations()
 {
   FILE *fp;
   fp = fopen("animation/information.txt","w");
-  fprintf(fp,"%d",numofanimation);
+  fprintf(fp,"%d\n",numofanimation);
+  fclose(fp);
+}
+
+void save_number_of_moving_things()
+{
+  FILE *fp;
+  fp = fopen("animation/information.txt","a");
+  fprintf(fp,"%d\n",numofmovingthingswhenanimationfinished);
   fclose(fp);
 }
 
@@ -581,7 +744,7 @@ int main()
   
   int hsize = 0;
   Node *begin = NULL;
-  numofanimation = load_number_of_animations();
+  load_information();
   
   while(1){
     printf("%d > ", hsize);
@@ -590,7 +753,13 @@ int main()
     const int r = interpret_command(buf, &hsize, &begin, fp);
     if (r == 2) break;
     if (r == 3) {
+      numofmovingthingswhenanimationfinished = 1;
       save_number_of_animations();
+      save_number_of_moving_things();
+    }
+    if (r == 4) {
+      save_number_of_animations();
+      save_number_of_moving_things();
     }
     if (r == 0) {
       begin = push_back(begin, buf);
